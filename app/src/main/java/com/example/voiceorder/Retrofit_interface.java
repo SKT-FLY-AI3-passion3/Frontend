@@ -1,11 +1,11 @@
 package com.example.voiceorder;
 
-import java.util.HashMap;
-import java.util.Map;
+import com.google.gson.JsonObject;
 
 import okhttp3.MultipartBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
+import retrofit2.http.Body;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -16,10 +16,17 @@ interface Retrofit_interface {
     @GET("/")
     Call<ResponseBody> getRoot();
 
+    // Send FLAC file to Server
     @Multipart
-    @POST("/convert")
-    Call<String> uploadFile(@Part MultipartBody.Part file);
+    @POST("/stt")
+    Call<ResponseBody> uploadFile(
+            @Part("key") String key,
+            @Part MultipartBody.Part file
+    );
 
-    @POST("/")
-    Call<String> uploadText(String text);
+    // Send Text to Server
+    @POST("/tts/synthesize")
+    Call<ResponseBody> uploadText(
+            @Body JsonObject jsonObject
+    );
 }
