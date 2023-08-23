@@ -2,40 +2,50 @@ package com.example.voiceorder;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
+import androidx.core.content.ContextCompat;
 
 import android.content.pm.PackageManager;
 import android.media.MediaRecorder;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.SystemClock;
+import android.util.Log;
 import android.widget.Button;
 import android.widget.Toast;
 
+import java.io.File;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
-import java.util.AbstractCollection;
 import java.util.Date;
+
+import okhttp3.MediaType;
+import okhttp3.MultipartBody;
+import okhttp3.RequestBody;
+import retrofit2.Call;
+import retrofit2.Callback;
+import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
     Button voiceRecorder;
 
-    /** 녹음 및 중지, 오디오 파일 관련 변수 **/
-    // 오디오 권한
-    private String recordPermission = android.Manifest.permission.RECORD_AUDIO;
-    private int PERMISSION_CODE = 21;
+    /** Record & Stop, Audio file variable **/
+    // Audio Authorization
+    private static final int REQUEST_PERMISSION = 100;
 
-    // 오디오 파일 녹음 관련 변수
+    // Recording
     private MediaRecorder mediaRecorder;
-    private String audioFileName;           // 오디오 녹음 생성 파일 이름
     private boolean isRecording = false;    // 현재 녹음 상태를 확인하기 위함.
-    private Uri audioUri = null;            // 오디오 파일 uri
 
-    /** 터치 이벤트 관련 변수 **/
+    /** Server Upload variable **/
+    private String outputPath;
+    File outFile;
+
+    /** Touch Event variable **/
     private long lastClickTime = 0;                 // 마지막 클릭 시간
     private int clickTime = 0;                      // 클릭된 횟수
     private final int TIMES_REQUIRED_START = 2;     // 녹음을 시작하는 데 총 필요한 클릭 횟수
     private final int TIMES_REQUIRED_Terminate = 3; // 녹음을 종료하는 데 총 필요한 클릭 횟수
     private final int TIME_TIMEOUT = 2000;          // 마지막 클릭후 제한시간
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -44,64 +54,69 @@ public class MainActivity extends AppCompatActivity {
 
         voiceRecorder = findViewById(R.id.recoder);
 
-        checkAudioPermission();
-        voiceRecorder.setOnClickListener(v -> TouchContinuously());
+        voiceRecorder.setOnClickListener(v -> {
+            try {
+                TouchContinuously();
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        });
     }
 
-    /** 녹음 및 중지 +*/
-    // 오디오 파일 권한 체크
-    private boolean checkAudioPermission() {
-        if (ActivityCompat.checkSelfPermission(getApplicationContext(), recordPermission) == PackageManager.PERMISSION_GRANTED) {
-            return true;
+    /** Obtaining Required Privileges **/
+    private void checkPermission() {
+        if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
+                != PackageManager.PERMISSION_GRANTED ||
+                ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions(
+                    this,
+                    new String[]{android.Manifest.permission.RECORD_AUDIO, android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
+                    REQUEST_PERMISSION
+            );
         } else {
-            ActivityCompat.requestPermissions(this, new String[]{recordPermission}, PERMISSION_CODE);
-            return false;
         }
     }
 
-    // 녹음 시작
+    /** Start Recording **/
     private void startRecording() {
-        // 파일의 외부 경로 확인
-        String recordPath = getExternalFilesDir("/").getAbsolutePath();
-        // 파일 이름 변수를 현재 날짜가 들어가도록 초기화. 그 이유는 중복된 이름으로 기존에 있던 파일이 덮어 쓰여지는 것을 방지하고자 함.
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        audioFileName = recordPath + "/" +"RecordExample_" + timeStamp + "_"+"audio.mp4";
+        checkPermission();
 
-        // Media Recorder 생성 및 설정
+        // File Name
+        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+        outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.flac";
+        outFile = new File(outputPath);
+
+        // Media Recorder
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mediaRecorder.setOutputFile(audioFileName);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
+        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mediaRecorder.setOutputFile(outputPath);
 
+        // Prepare and Start Recording
         try {
             mediaRecorder.prepare();
         } catch (IOException e) {
             e.printStackTrace();
         }
-
-        //녹음 시작
         mediaRecorder.start();
-        Toast.makeText(this, "Start Record", Toast.LENGTH_SHORT).show();
+        isRecording = true;
     }
 
-    // 녹음 종료
-    private void stopRecording() {
-        // 녹음 종료 종료
+    /** Stop Recording **/
+    private void stopRecording() throws IOException {
         mediaRecorder.stop();
         mediaRecorder.release();
         mediaRecorder = null;
+        isRecording = false;
 
-        // 파일 경로(String) 값을 Uri로 변환해서 저장
-        //      - Why? : 리사이클러뷰에 들어가는 ArrayList가 Uri를 가지기 때문
-        //      - File Path를 알면 File을  인스턴스를 만들어 사용할 수 있기 때문
-        audioUri = Uri.parse(audioFileName);
-        Toast.makeText(this, "Stop Record", Toast.LENGTH_SHORT).show();
+        // Upload FLAC file to Server
+        uploadFileToServer();
     }
 
-    /** 터치 이벤트 **/
-    private void TouchContinuously() {
-        // 기준 시각보다 짧은 시각 안에 다음 터치를 하면 1 더하고, 아니면 1로 초기화
+    /** Touch Event => Start/Stop Recording **/
+    private void TouchContinuously() throws IOException {
         if (SystemClock.elapsedRealtime() - lastClickTime < TIME_TIMEOUT) {
             clickTime++;
         } else {
@@ -109,14 +124,39 @@ public class MainActivity extends AppCompatActivity {
         }
         lastClickTime = SystemClock.elapsedRealtime();
 
-        // 2번 연속터치시 녹음 시작
-        if (mediaRecorder == null && clickTime == TIMES_REQUIRED_START)
+        // Start Recording
+        if (!isRecording && clickTime == TIMES_REQUIRED_START)
             startRecording();
-        else
+        else if (isRecording)
             Toast.makeText(this, "Already Recording", Toast.LENGTH_SHORT).show();
 
-        // 3번 연속터치시 녹음 중지
-        if (mediaRecorder != null && clickTime == TIMES_REQUIRED_Terminate)
+        // Stop Recording
+        if (isRecording && clickTime == TIMES_REQUIRED_Terminate)
             stopRecording();
+    }
+
+    /** Upload FLAC file to Server **/
+    private void uploadFileToServer() {
+        // Create RequestBody instance from file
+        RequestBody requestFile = RequestBody.create(MediaType.parse("audio/*"), outFile);
+        MultipartBody.Part body = MultipartBody.Part.createFormData("file", outFile.getName(), requestFile);
+
+        Call<String> call = Retrofit_client.getApiService().uploadFile(body);
+
+        call.enqueue(new Callback<String>(){
+            @Override
+            public void onResponse(Call<String> call, Response<String> response) {
+                if (!response.isSuccessful()){
+                    Log.e("결과", "응안돼~" + response.toString());
+                }else{
+                    Log.i("결과", "됨!");
+                }
+            }
+
+            @Override
+            public void onFailure(Call<String> call, Throwable t) {
+                Log.i("결과", call.toString());
+            }
+        });
     }
 }
