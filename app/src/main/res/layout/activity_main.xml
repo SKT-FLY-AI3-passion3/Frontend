@@ -5,51 +5,42 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
+    android:id="@+id/relativeLayout"
     android:orientation="vertical"
-    android:gravity="center"
     tools:context=".MainActivity">
 
     <FrameLayout
         android:layout_width="match_parent"
-        android:layout_height="match_parent">
+        android:layout_height="match_parent"
+        >
 
-        <Button
+        <ImageButton
             android:id="@+id/recodeBtn"
             android:layout_width="match_parent"
             android:layout_height="match_parent"
-            android:text="Button"
-            tools:layout_editor_absoluteX="0dp"
-            tools:layout_editor_absoluteY="5dp" />
+            android:src="@drawable/ic_launcher_background"
+            android:text="Button" />
 
-        <LinearLayout
-            android:orientation="vertical"
-            android:layout_width="match_parent"
-            android:layout_height="match_parent"
-            android:gravity="center">
+        <TextView
+            android:id="@+id/STT_Result"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="위 STT 결과"
+            android:textColor="@color/white"
+            android:textSize="20dp"
+            android:layout_marginTop="20dp"
+            android:layout_gravity="center_horizontal"/>
 
-            <TextView
-                android:id="@+id/STT_Result"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="20dp"
-                android:textColor="#000000"
-                android:text="위 STT 결과"
-                />
+        <TextView
+            android:id="@+id/TTS_Result"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="아래 TTS 결과"
+            android:textColor="#000000"
+            android:layout_gravity="bottom|center_horizontal"
+            android:textSize="20dp"
+            android:layout_marginBottom="20dp"
+            />
 
-            <Space
-                android:layout_width="match_parent"
-                android:layout_height="200dp"
-                />
-
-            <TextView
-                android:id="@+id/TTS_Result"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:textSize="20dp"
-                android:textColor="#000000"
-                android:text="아래 TTS 결과"
-                />
-
-        </LinearLayout>
     </FrameLayout>
 </LinearLayout>

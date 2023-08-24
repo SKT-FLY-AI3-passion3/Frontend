@@ -9,10 +9,11 @@ import android.media.MediaPlayer;
 import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.Environment;
 import android.os.SystemClock;
 import android.util.Log;
 import android.widget.Button;
+import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.gson.JsonObject;
@@ -35,7 +36,9 @@ import retrofit2.Callback;
 import retrofit2.Response;
 
 public class MainActivity extends AppCompatActivity {
-    Button voiceRecorder;
+    ImageButton voiceRecorder;
+    TextView STT_Result;
+    TextView TTS_Result;
 
     /** Record & Stop, Audio file variable **/
     // Audio Authorization
@@ -66,6 +69,8 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         voiceRecorder = findViewById(R.id.recodeBtn);
+        STT_Result = findViewById(R.id.STT_Result);
+        TTS_Result = findViewById(R.id.TTS_Result);
 
         voiceRecorder.setOnClickListener(v -> {
             try {
@@ -96,7 +101,7 @@ public class MainActivity extends AppCompatActivity {
         checkPermission();
 
         // If want, stop guide voice and reply
-        // stopGuide();
+        stopGuide();
 
         // File Name
         String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -121,7 +126,7 @@ public class MainActivity extends AppCompatActivity {
     }
 
     /** Stop Recording **/
-    private void stopRecording() throws IOException {
+    private void stopRecording() {
         mediaRecorder.stop();
         mediaRecorder.release();
         mediaRecorder = null;
@@ -164,13 +169,15 @@ public class MainActivity extends AppCompatActivity {
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (!response.isSuccessful()){
                     ResponseBody body = response.body();
-                    Log.e("Result", "Connection succeeded but did not receive a value");
+                    Log.e("MResult: ", "Connection succeeded but did not receive a value");
                 }else{
                     // Send STT Result to Chatbot
                     ResponseBody body = response.body();
                     String text;
                     try {
                         text = body.string();
+                        STT_Result.setText(text);
+                        Log.i("MResult: ", "" + text);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -178,7 +185,8 @@ public class MainActivity extends AppCompatActivity {
 
                     // Send Text from Chatbot to TTS
                     try {
-                        uploadTextToServer("안녕하세요! 만나서 반가워요.");
+                        TTS_Result.setText(text);
+                        uploadTextToServer(text);
                     } catch (JSONException e) {
                         throw new RuntimeException(e);
                     }
@@ -187,7 +195,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.i("Result", "Can't connect to Server");
+                Log.i("MResult: ", "Can't connect to Server");
             }
         });
     }
@@ -204,7 +212,7 @@ public class MainActivity extends AppCompatActivity {
             @Override
             public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
                 if (!response.isSuccessful()){
-                    Log.e("Result", "Connection succeeded but did not receive a value");
+                    Log.e("MResult: ", "Connection succeeded but did not receive a value");
                 }else{
                     // File Name
                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
@@ -225,8 +233,8 @@ public class MainActivity extends AppCompatActivity {
                         outputStream.close();
                         inputStream.close();
 
-                         // Play Result
-                         Uri uri = Uri.fromFile(mp3File);
+                        // Play Result
+                        Uri uri = Uri.fromFile(mp3File);
                         playGuide(uri);
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -236,7 +244,7 @@ public class MainActivity extends AppCompatActivity {
 
             @Override
             public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.i("Result", "Can't connect to Server");
+                Log.i("MResult: ", "Can't connect to Server");
             }
         });
     }
@@ -249,18 +257,20 @@ public class MainActivity extends AppCompatActivity {
 
     /** Stop Guide Voice **/
     private void stopGuide() {
-        if(mediaPlayer.isPlaying()){
+        if(mediaPlayer != null && mediaPlayer.isPlaying()){
             mediaPlayer.stop();
             mediaPlayer.reset();
-        }
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if(mediaPlayer != null) {
             mediaPlayer.release();
             mediaPlayer = null ;
         }
     }
+
+//    @Override
+//    protected void onDestroy() {
+//        super.onDestroy();
+//        if(mediaPlayer != null) {
+//            mediaPlayer.release();
+//            mediaPlayer = null ;
+//        }
+//    }
 }
