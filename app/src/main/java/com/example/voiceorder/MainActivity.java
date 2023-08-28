@@ -4,64 +4,56 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 
+import android.annotation.SuppressLint;
+import android.content.ComponentName;
+import android.content.Context;
+import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.media.MediaPlayer;
-import android.media.MediaRecorder;
 import android.net.Uri;
 import android.os.Bundle;
-import android.os.SystemClock;
+import android.os.Handler;
+import android.os.Message;
+import android.os.RemoteException;
+import android.os.VibrationEffect;
+import android.os.Vibrator;
 import android.util.Log;
-import android.widget.Button;
-import android.widget.ImageButton;
+import android.widget.LinearLayout;
 import android.widget.TextView;
-import android.widget.Toast;
 
-import com.google.gson.JsonObject;
+import com.example.voiceorder.API.Retrofit;
+import com.example.voiceorder.chatting.ChatRoomActivity;
 
+import org.altbeacon.beacon.Beacon;
+import org.altbeacon.beacon.BeaconConsumer;
+import org.altbeacon.beacon.BeaconManager;
+import org.altbeacon.beacon.BeaconParser;
+import org.altbeacon.beacon.RangeNotifier;
+import org.altbeacon.beacon.Region;
 import org.json.JSONException;
 
-import java.io.File;
-import java.io.FileOutputStream;
-import java.io.IOException;
-import java.io.InputStream;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 
-import okhttp3.MediaType;
-import okhttp3.MultipartBody;
-import okhttp3.RequestBody;
-import okhttp3.ResponseBody;
-import retrofit2.Call;
-import retrofit2.Callback;
-import retrofit2.Response;
 
-public class MainActivity extends AppCompatActivity {
-    ImageButton voiceRecorder;
-    TextView STT_Result;
+public class MainActivity extends AppCompatActivity implements BeaconConsumer {
+    LinearLayout voiceRecorder;
     TextView TTS_Result;
 
     /** Record & Stop, Audio file variable **/
     // Audio Authorization
     private static final int REQUEST_PERMISSION = 100;
+    Voice voice;
 
-    // Recording
-    private MediaRecorder mediaRecorder;
-    private boolean isRecording = false;
-
-    /** Server Upload variable **/
-    private String outputPath;
-    File outFile;
-
-    /** Touch Event variable **/
-    private long lastClickTime = 0;
-    private int clickTime = 0;
-    private final int TIMES_REQUIRED_START_Recording = 2;
-    private final int TIMES_REQUIRED_STOP_Recording = 3;
-    private final int TIME_TIMEOUT = 2000;
-
-    /** TTS Result Play variable **/
-    MediaPlayer mediaPlayer;
-    File mp3File;
+    /** Beacon **/
+    private static final String TAG = "MyBeacon: ";
+    private BeaconManager beaconManager;
+    private List<Beacon> beaconList = new ArrayList<>();
+    private static final String BEACON_UUID = "fda50693-a4e2-4fb1-afcf-c6eb07647825";
+    private static final int BEACON_MAJOR = 10004;
+    Vibrator vibrator;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -69,208 +61,145 @@ public class MainActivity extends AppCompatActivity {
         setContentView(R.layout.activity_main);
 
         voiceRecorder = findViewById(R.id.recodeBtn);
-        STT_Result = findViewById(R.id.STT_Result);
         TTS_Result = findViewById(R.id.TTS_Result);
 
         voiceRecorder.setOnClickListener(v -> {
             try {
-                TouchContinuously();
-            } catch (IOException e) {
+                // File Name
+                String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
+                String outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.mp3";
+
+                Retrofit.uploadTextToChatbot("안녕", outputPath);
+
+                Intent intent = new Intent(this, ChatRoomActivity.class);
+                startActivity(intent);
+            } catch (JSONException e) {
                 throw new RuntimeException(e);
             }
         });
+
+        checkPermission();
+
+        beaconManager = BeaconManager.getInstanceForApplication(this);
+        beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24,d:25-25"));
+        beaconManager.bind(this);
+        handler.sendEmptyMessage(0);
+
+        voice = new Voice(this);
+    }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        beaconManager.unbind(this);
+        Public.inStore = false;
+        Public.msgList.clear();
+
+        vibrator.cancel();
+        vibrator = null;
     }
 
     /** Obtaining Required Privileges **/
-    private void checkPermission() {
+    private boolean checkPermission() {
         if (ContextCompat.checkSelfPermission(this, android.Manifest.permission.RECORD_AUDIO)
                 != PackageManager.PERMISSION_GRANTED ||
-                ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
-                        != PackageManager.PERMISSION_GRANTED) {
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                != PackageManager.PERMISSION_GRANTED ||
+            ContextCompat.checkSelfPermission(this, android.Manifest.permission.ACCESS_COARSE_LOCATION)
+                != PackageManager.PERMISSION_GRANTED
+        ) {
             ActivityCompat.requestPermissions(
                     this,
                     new String[]{android.Manifest.permission.RECORD_AUDIO, android.Manifest.permission.WRITE_EXTERNAL_STORAGE},
                     REQUEST_PERMISSION
             );
+            return true;
         } else {
         }
+        return false;
     }
 
-    /** Start Recording **/
-    private void startRecording() {
-        checkPermission();
-
-        // If want, stop guide voice and reply
-        stopGuide();
-
-        // File Name
-        String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
-        outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.mp3";
-        outFile = new File(outputPath);
-
-        // Media Recorder
-        mediaRecorder = new MediaRecorder();
-        mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
-        mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
-        mediaRecorder.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-        mediaRecorder.setOutputFile(outputPath);
-
-        // Prepare and Start Recording
-        try {
-            mediaRecorder.prepare();
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        mediaRecorder.start();
-        isRecording = true;
-    }
-
-    /** Stop Recording **/
-    private void stopRecording() {
-        mediaRecorder.stop();
-        mediaRecorder.release();
-        mediaRecorder = null;
-        isRecording = false;
-
-        // Upload FLAC file to Server
-        uploadFileToServer();
-    }
-
-    /** Touch Event => Start/Stop Recording **/
-    private void TouchContinuously() throws IOException {
-        if (SystemClock.elapsedRealtime() - lastClickTime < TIME_TIMEOUT) {
-            clickTime++;
-        } else {
-            clickTime = 1;
-        }
-        lastClickTime = SystemClock.elapsedRealtime();
-
-        // Start Recording
-        if (!isRecording && clickTime == TIMES_REQUIRED_START_Recording)
-            startRecording();
-        else if (isRecording)
-            Toast.makeText(this, "Already Recording", Toast.LENGTH_SHORT).show();
-
-        // Stop Recording
-        if (isRecording && clickTime == TIMES_REQUIRED_STOP_Recording)
-            stopRecording();
-    }
-
-    /** Upload FLAC file to Server **/
-    private void uploadFileToServer() {
-        // Create RequestBody instance from file
-        RequestBody requestFile = RequestBody.create(MediaType.parse("audio/*"), outFile);
-        MultipartBody.Part body = MultipartBody.Part.createFormData("file", outFile.getName(), requestFile);
-        Call<ResponseBody> call = Retrofit_client.getApiService().uploadFile("file", body);
-
-        // Request to Server
-        call.enqueue(new Callback<ResponseBody>(){
+    /** Beacon **/
+    @Override
+    public void onBeaconServiceConnect() {
+        beaconManager.addRangeNotifier(new RangeNotifier() {
             @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (!response.isSuccessful()){
-                    ResponseBody body = response.body();
-                    Log.e("MResult: ", "Connection succeeded but did not receive a value");
-                }else{
-                    // Send STT Result to Chatbot
-                    ResponseBody body = response.body();
-                    String text;
-                    try {
-                        text = body.string();
-                        STT_Result.setText(text);
-                        Log.i("MResult: ", "" + text);
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
-                    // 이게 안되는 중
-
-                    // Send Text from Chatbot to TTS
-                    try {
-                        TTS_Result.setText(text);
-                        uploadTextToServer(text);
-                    } catch (JSONException e) {
-                        throw new RuntimeException(e);
+            public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
+                if (beacons.size() > 0) {
+                    beaconList.clear();
+                    for (Beacon beacon : beacons) {
+                        beaconList.add(beacon);
                     }
                 }
             }
-
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.i("MResult: ", "Can't connect to Server");
-            }
         });
+
+        try {
+            beaconManager.startRangingBeaconsInRegion(new Region("myRangingUniqueId", null, null, null));
+        } catch (RemoteException e) {   }
     }
 
-    /** Upload Text to Server **/
-    private void uploadTextToServer(String text) throws JSONException {
-        // Create JsonObject instance from file
-        JsonObject jsonObject = new JsonObject();
-        jsonObject.addProperty("text", text);
-        Call<ResponseBody> call = Retrofit_client.getApiService().uploadText(jsonObject);
+    @SuppressLint("HandlerLeak")
+    Handler handler = new Handler() {
+        public void handleMessage(Message msg) {
+        for(Beacon beacon : beaconList){
+            String uuid=beacon.getId1().toString();     // beacon uuid
+            int major = beacon.getId2().toInt();        // beacon major
+            Log.d(TAG, "UUID: " + uuid);
+            if(uuid.equals(BEACON_UUID) && major == BEACON_MAJOR && ! Public.inStore){
+                Log.d(TAG, "감지함");
+                vibrate();
+                drawOverlayView();
 
-        // Request to Server
-        call.enqueue(new Callback<ResponseBody>(){
-            @Override
-            public void onResponse(Call<ResponseBody> call, Response<ResponseBody> response) {
-                if (!response.isSuccessful()){
-                    Log.e("MResult: ", "Connection succeeded but did not receive a value");
-                }else{
+                try {
+                    Public.session++;
+                    Retrofit.clearBasket();
+                    Public.msgList.clear();
+
                     // File Name
                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                     String outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.mp3";
-                    mp3File = new File(outputPath);
 
-                    ResponseBody responseBody = response.body();
-                    try {
-                        InputStream inputStream = responseBody.byteStream();
-                        FileOutputStream outputStream = new FileOutputStream(mp3File);
-
-                        byte[] buffer = new byte[4096];
-                        int bytesRead;
-                        while ((bytesRead = inputStream.read(buffer)) != -1) {
-                            outputStream.write(buffer, 0, bytesRead);
-                        }
-
-                        outputStream.close();
-                        inputStream.close();
-
-                        // Play Result
-                        Uri uri = Uri.fromFile(mp3File);
-                        playGuide(uri);
-                    } catch (Exception e) {
-                        e.printStackTrace();
-                    }
+                    String result = Retrofit.uploadTextToChatbot("안녕", outputPath);
+                    TTS_Result.setText(result);
+                } catch (JSONException e) {
+                    throw new RuntimeException(e);
                 }
-            }
+                Intent intent = new Intent(getApplicationContext(), ChatRoomActivity.class);
+                startActivity(intent);
 
-            @Override
-            public void onFailure(Call<ResponseBody> call, Throwable t) {
-                Log.i("MResult: ", "Can't connect to Server");
+                Public.inStore = true;
             }
-        });
+        }
+        beaconList.clear();
+
+        // Call itself in 1 second
+        handler.sendEmptyMessageDelayed(0, 1000);
+        }
+    };
+
+    /** Floating View **/
+    private void drawOverlayView() {
+        Intent intent = new Intent();
+        intent.setComponent(new ComponentName("com.example.voiceorder", "com.example.voiceorder.MainActivity"));
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        startActivity(intent);
     }
 
-    /** Play Guide Voice **/
-    private void playGuide(Uri guideMp3) {
-        mediaPlayer = MediaPlayer.create(this, guideMp3);
-        mediaPlayer.start();
-    }
+    /** Vibration **/
+    private void vibrate() {
+        vibrator = (Vibrator) getSystemService(Context.VIBRATOR_SERVICE);
+        if (vibrator != null) {
+            long[] pattern = {100, 200, 100, 200, 100, 200, 100, 200};
+            int repeat = -1;
 
-    /** Stop Guide Voice **/
-    private void stopGuide() {
-        if(mediaPlayer != null && mediaPlayer.isPlaying()){
-            mediaPlayer.stop();
-            mediaPlayer.reset();
-            mediaPlayer.release();
-            mediaPlayer = null ;
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
+                VibrationEffect vibrationEffect = VibrationEffect.createWaveform(pattern, repeat);
+                vibrator.vibrate(vibrationEffect);
+                Log.d(TAG, "진동함");
+            } else {
+                vibrator.vibrate(pattern, repeat);
+            }
         }
     }
-
-//    @Override
-//    protected void onDestroy() {
-//        super.onDestroy();
-//        if(mediaPlayer != null) {
-//            mediaPlayer.release();
-//            mediaPlayer = null ;
-//        }
-//    }
 }

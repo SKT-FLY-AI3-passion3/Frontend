@@ -1,4 +1,4 @@
-package com.example.voiceorder;
+package com.example.voiceorder.API;
 
 import com.google.gson.JsonObject;
 
@@ -6,6 +6,7 @@ import okhttp3.MultipartBody;
 import okhttp3.ResponseBody;
 import retrofit2.Call;
 import retrofit2.http.Body;
+import retrofit2.http.DELETE;
 import retrofit2.http.GET;
 import retrofit2.http.Multipart;
 import retrofit2.http.POST;
@@ -25,8 +26,18 @@ interface Retrofit_interface {
     );
 
     // Send Text to Server
-    @POST("/tts/synthesize")
+    @POST("/tts")
     Call<ResponseBody> uploadText(
             @Body JsonObject jsonObject
     );
+
+    // Send Text to Chatbot
+    @POST("/chatbot")
+    Call<ResponseBody> uploadTextToChatbot(
+            @Body JsonObject jsonObject
+    );
+
+    // Clear Basket
+    @DELETE("/food/clear")
+    Call<ResponseBody> clearBasket();
 }

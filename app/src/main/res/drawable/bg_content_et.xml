@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<layer-list xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- 배경 아이템 설정 -->
+    <item>
+        <shape>
+            <solid
+                android:color="@color/white">
+            </solid>
+            <corners
+                android:radius="28dp">
+            </corners>
+        </shape>
+    </item>
+</layer-list>

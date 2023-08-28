@@ -1,4 +1,4 @@
-package com.example.voiceorder;
+package com.example.voiceorder.API;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
@@ -15,11 +15,11 @@ public class Retrofit_client {
     public static Retrofit_interface getApiService(){return getInstance().create(Retrofit_interface.class);}
 
     private static Retrofit getInstance(){
-        // 로그 출력
+        // Log
         HttpLoggingInterceptor loggingInterceptor = new HttpLoggingInterceptor();
         loggingInterceptor.setLevel(HttpLoggingInterceptor.Level.BASIC);
 
-        // 클라이언트 정의
+        // Client Definition
         OkHttpClient client = TrustOkHttpClientUtil.getUnsafeOkHttpClient().build(); // 클라이언트 신뢰도 구축(?)
 
         Gson gson = new GsonBuilder().setLenient().create();
