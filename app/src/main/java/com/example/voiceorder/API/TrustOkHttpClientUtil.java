@@ -11,7 +11,7 @@ import javax.net.ssl.X509TrustManager;
 
 import okhttp3.OkHttpClient;
 
-/** Certification for Server Communication **/
+/** Class: Certification for Server Communication **/
 public class TrustOkHttpClientUtil {
 
     public static OkHttpClient.Builder getUnsafeOkHttpClient() {
@@ -38,7 +38,7 @@ public class TrustOkHttpClientUtil {
             final SSLContext sslContext = SSLContext.getInstance("SSL");
             sslContext.init(null, trustAllCerts, new java.security.SecureRandom());
 
-            // Create an ssl socket factory with our all-trusting manager
+            // Create an SSL Socket Factory with our all-trusting manager
             final SSLSocketFactory sslSocketFactory = sslContext.getSocketFactory();
 
             OkHttpClient.Builder builder = new OkHttpClient.Builder();

@@ -6,44 +6,42 @@ import android.media.MediaRecorder;
 import android.media.Ringtone;
 import android.media.RingtoneManager;
 import android.net.Uri;
-import android.util.Log;
 
-import java.io.File;
 import java.io.IOException;
 
+/** Class: Main Page **/
 public class Voice {
     static Activity activity;
 
-    /** TTS Result Play variable **/
+    /** Variables used to Recording & Playing **/
     static MediaPlayer mediaPlayer;
-    File mp3File;
-
     private static MediaRecorder mediaRecorder;
 
+    /** Constructor **/
     public Voice(Activity activity) {
         this.activity = activity;
     }
 
     /** Play Notification **/
     public static void noti() {
-        // 소리의 식별자 값을 얻는 과정
+        // Obtaining an Identifier Value for a Sound
         Uri notification = RingtoneManager.getDefaultUri(RingtoneManager.TYPE_NOTIFICATION);
 
-        // 소리를 재생하는 Ringtone 객체 얻기
+        // Get Ringtone Objects that Play Sound
         Ringtone ringtone = RingtoneManager.getRingtone(activity.getApplicationContext(), notification);
 
-        // 소리 재생하기
+        // Play Sound
         ringtone.play();
     }
 
     /** Start Recording **/
     public static void startRecording(String outputPath) {
-        // If want, stop guide voice and reply
-        while (mediaPlayer != null && mediaPlayer.isPlaying())
+        // If want, Stop Guide Voice and Reply
+        while(mediaPlayer != null && mediaPlayer.isPlaying())
             stopGuide();
-        noti();
+        noti();                 // Play Notification
 
-        // Media Recorder
+        // Setting Media Recorder
         mediaRecorder = new MediaRecorder();
         mediaRecorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         mediaRecorder.setOutputFormat(MediaRecorder.OutputFormat.MPEG_4);
@@ -68,14 +66,14 @@ public class Voice {
             mediaRecorder = null;
             Public.isRecording = false;
 
-            noti();
+            noti();     // Play Notification
         }
     }
 
     /** Play Guide Voice **/
     public static void playGuide(Uri guideMp3) {
-        while (mediaPlayer != null)
-            stopGuide();
+        // If Guide Playing, Stop First
+        stopGuide();
 
         if (mediaPlayer == null) {
             mediaPlayer = MediaPlayer.create(activity, guideMp3);
@@ -85,8 +83,12 @@ public class Voice {
 
     /** Stop Guide Voice **/
     public static void stopGuide() {
-        if(mediaPlayer != null && mediaPlayer.isPlaying()){
+        if (mediaPlayer != null && mediaPlayer.isPlaying()){    // If Playingg
             mediaPlayer.stop();
+            mediaPlayer.reset();
+            mediaPlayer.release();
+            mediaPlayer = null ;
+        } else if (mediaPlayer != null) {                       // If not Playing
             mediaPlayer.reset();
             mediaPlayer.release();
             mediaPlayer = null ;

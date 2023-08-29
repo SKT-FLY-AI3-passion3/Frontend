@@ -2,20 +2,20 @@ package com.example.voiceorder.chatting;
 
 import androidx.annotation.NonNull;
 
-// 채팅 객체를 담을 클래스.
+/** Class: Contains Chat Objects **/
 public class ChatMsgVO {
     private String content;
     private boolean isUser;
 
-    public ChatMsgVO() {
-
-    }
+    /** Constructor **/
+    public ChatMsgVO() { }
 
     public ChatMsgVO(boolean isUser, String content) {
         this.isUser = isUser;
         this.content = content;
     }
 
+    /** Getter & Setter **/
     public String getContent() {
         return content;
     }
@@ -32,6 +32,7 @@ public class ChatMsgVO {
         isUser = user;
     }
 
+    /** Print Variables in String **/
     @NonNull
     @Override
     public String toString() {

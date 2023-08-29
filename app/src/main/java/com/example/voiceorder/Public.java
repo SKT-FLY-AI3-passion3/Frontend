@@ -1,19 +1,18 @@
 package com.example.voiceorder;
 
 import android.app.Application;
-import android.util.Log;
 
 import com.example.voiceorder.chatting.ChatMsgVO;
 
 import java.util.ArrayList;
 import java.util.List;
 
-// 앱 전체에서 사용될 전역 변수들.
+/** CLass: Global Variables to be used throughout the APP **/
 public class Public extends Application {
-    public static boolean inStore = false;
-    public static List<ChatMsgVO> msgList = new ArrayList<>();
-    public static int session = 0;
-    public static boolean isRecording = false;
+    public static boolean inStore = false;          // Whether User is inside the Store
+    public static int session = 0;                  // Session Number used in Server
+    public static boolean isRecording = false;      // Whether Recording or Not
+    public static List<ChatMsgVO> msgList = new ArrayList<>();  // List variable containing Chat messages
 
     @Override
     public void onCreate() {
@@ -21,13 +20,9 @@ public class Public extends Application {
     }
 
     public static void addMessage(boolean isUser, String message) {
-        Log.d("DFAfs", "2-1");
         message = message.replace(
                 System.getProperty("line.separator").toString(), "");
-        Log.d("DFAfs", "2-2");
         ChatMsgVO msgVO = new ChatMsgVO(isUser, message);
-        Log.d("DFAfs", "2-3");
         msgList.add(msgVO);
-        Log.d("DFAfs", "2-4");
     }
 }

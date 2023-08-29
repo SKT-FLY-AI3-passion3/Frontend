@@ -9,16 +9,13 @@ import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
-import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.RemoteException;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
-import android.util.Log;
 import android.widget.LinearLayout;
-import android.widget.TextView;
 
 import com.example.voiceorder.API.Retrofit;
 import com.example.voiceorder.chatting.ChatRoomActivity;
@@ -37,18 +34,17 @@ import java.util.Collection;
 import java.util.Date;
 import java.util.List;
 
-
+/** Class: Main Activity **/
 public class MainActivity extends AppCompatActivity implements BeaconConsumer {
+    /** Components **/
     LinearLayout voiceRecorder;
-    TextView TTS_Result;
 
-    /** Record & Stop, Audio file variable **/
-    // Audio Authorization
-    private static final int REQUEST_PERMISSION = 100;
+    /** Record & Stop, Audio variable **/
+    private static final int REQUEST_PERMISSION = 100;     // Audio Authorization
     Voice voice;
 
     /** Beacon **/
-    private static final String TAG = "MyBeacon: ";
+    private static final String TAG = "Beacon: ";
     private BeaconManager beaconManager;
     private List<Beacon> beaconList = new ArrayList<>();
     private static final String BEACON_UUID = "fda50693-a4e2-4fb1-afcf-c6eb07647825";
@@ -60,17 +56,20 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
+        // Connect XML component and Variables
         voiceRecorder = findViewById(R.id.recodeBtn);
-        TTS_Result = findViewById(R.id.TTS_Result);
 
+        // Attach Touch Event to Screen
         voiceRecorder.setOnClickListener(v -> {
             try {
                 // File Name
                 String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                 String outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.mp3";
 
+                // Boot Chatbot
                 Retrofit.uploadTextToChatbot("안녕", outputPath);
 
+                // Execute ChatRoomActivity
                 Intent intent = new Intent(this, ChatRoomActivity.class);
                 startActivity(intent);
             } catch (JSONException e) {
@@ -78,8 +77,10 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
             }
         });
 
+        // Check Permission needed to execute APP
         checkPermission();
 
+        // Set Settings regarding to Beacon
         beaconManager = BeaconManager.getInstanceForApplication(this);
         beaconManager.getBeaconParsers().add(new BeaconParser().setBeaconLayout("m:2-3=0215,i:4-19,i:20-21,i:22-23,p:24-24,d:25-25"));
         beaconManager.bind(this);
@@ -123,6 +124,7 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
     @Override
     public void onBeaconServiceConnect() {
         beaconManager.addRangeNotifier(new RangeNotifier() {
+            // Execute when Beacon detected
             @Override
             public void didRangeBeaconsInRegion(Collection<Beacon> beacons, Region region) {
                 if (beacons.size() > 0) {
@@ -143,42 +145,44 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
     Handler handler = new Handler() {
         public void handleMessage(Message msg) {
         for(Beacon beacon : beaconList){
-            String uuid=beacon.getId1().toString();     // beacon uuid
-            int major = beacon.getId2().toInt();        // beacon major
-            Log.d(TAG, "UUID: " + uuid);
-            if(uuid.equals(BEACON_UUID) && major == BEACON_MAJOR && ! Public.inStore){
-                Log.d(TAG, "감지함");
-                vibrate();
-                drawOverlayView();
+            String uuid=beacon.getId1().toString();     // Beacon UUID
+            int major = beacon.getId2().toInt();        // Beacon Major
+
+            // If Detection of Target Beacon Success
+            if(uuid.equals(BEACON_UUID) && major == BEACON_MAJOR && !Public.inStore){
+                vibrate();          // Make VIbration
+                drawOverlayView();  // Draw APP View on the Other APP
 
                 try {
+                    // Initialize
                     Public.session++;
                     Retrofit.clearBasket();
                     Public.msgList.clear();
 
-                    // File Name
+                    // File Name & Path
                     String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
                     String outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.mp3";
 
-                    String result = Retrofit.uploadTextToChatbot("안녕", outputPath);
-                    TTS_Result.setText(result);
+                    Retrofit.uploadTextToChatbot("안녕", outputPath);     // Chatbot: Send Start Text to Chatbot
+
+                    // Execute ChatRoomActivity
+                    Intent intent = new Intent(getApplicationContext(), ChatRoomActivity.class);
+                    startActivity(intent);
+
+                    Public.inStore = true;
                 } catch (JSONException e) {
                     throw new RuntimeException(e);
                 }
-                Intent intent = new Intent(getApplicationContext(), ChatRoomActivity.class);
-                startActivity(intent);
-
-                Public.inStore = true;
             }
         }
         beaconList.clear();
 
-        // Call itself in 1 second
+        // Call itself every second
         handler.sendEmptyMessageDelayed(0, 1000);
         }
     };
 
-    /** Floating View **/
+    /** Draw APP View Over other APP **/
     private void drawOverlayView() {
         Intent intent = new Intent();
         intent.setComponent(new ComponentName("com.example.voiceorder", "com.example.voiceorder.MainActivity"));
@@ -196,7 +200,6 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.O) {
                 VibrationEffect vibrationEffect = VibrationEffect.createWaveform(pattern, repeat);
                 vibrator.vibrate(vibrationEffect);
-                Log.d(TAG, "진동함");
             } else {
                 vibrator.vibrate(pattern, repeat);
             }
