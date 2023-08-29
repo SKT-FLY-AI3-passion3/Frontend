@@ -70,7 +70,10 @@ public class Retrofit {
                         ChatRoomActivity.addMessage(true, result);  // Add Message to Array
 
                         // Send STT Result to Chatbot for Chatbot's Response
-                        uploadTextToChatbot(result, outputPath);
+                        if (result.equals(""))
+                            uploadTextToServer("잘 못 알아들었어요. 다시 한 번 말씀해주세요.", outputPath);
+                        else
+                            uploadTextToChatbot(result, outputPath);
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     } catch (JSONException e) {

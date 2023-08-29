@@ -14,8 +14,8 @@ public class Voice {
     static Activity activity;
 
     /** Variables used to Recording & Playing **/
-    static MediaPlayer mediaPlayer;
-    private static MediaRecorder mediaRecorder;
+    public static MediaPlayer mediaPlayer;
+    public static MediaRecorder mediaRecorder;
 
     /** Constructor **/
     public Voice(Activity activity) {

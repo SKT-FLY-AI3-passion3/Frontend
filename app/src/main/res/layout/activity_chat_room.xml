@@ -64,10 +64,10 @@
         >
 
         <ImageView
-            android:id="@+id/signal_small"
+            android:id="@+id/signal"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:src="@drawable/signal_small"
+            android:src="@drawable/signal"
             android:layout_below="@id/rv"
             android:layout_alignParentBottom="true"
             />

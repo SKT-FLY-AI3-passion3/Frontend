@@ -6,6 +6,7 @@ import com.example.voiceorder.chatting.ChatMsgVO;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Random;
 
 /** CLass: Global Variables to be used throughout the APP **/
 public class Public extends Application {
@@ -23,6 +24,17 @@ public class Public extends Application {
         message = message.replace(
                 System.getProperty("line.separator").toString(), "");
         ChatMsgVO msgVO = new ChatMsgVO(isUser, message);
-        msgList.add(msgVO);
+        if (!message.equals(""))
+            msgList.add(msgVO);
+    }
+
+    public static void createRandNum() {
+        int max_num_value = 2147483647;
+        int min_num_value = 1;
+
+        Random random = new Random();
+
+        int randomNum = random.nextInt(max_num_value - min_num_value + 1) + min_num_value;
+        session = randomNum;
     }
 }

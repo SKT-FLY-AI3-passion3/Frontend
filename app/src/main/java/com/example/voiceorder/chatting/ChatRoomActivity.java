@@ -35,7 +35,7 @@ public class ChatRoomActivity extends AppCompatActivity {
     private long lastClickTime = 0;
     private int clickTime = 0;
     private final int TIMES_REQUIRED_START_Recording = 2;
-    private final int TIMES_REQUIRED_STOP_Recording = 3;
+    private final int TIMES_REQUIRED_STOP_Recording = 2;
     private final int TIME_TIMEOUT = 2000;
 
     Voice voice;
@@ -70,7 +70,6 @@ public class ChatRoomActivity extends AppCompatActivity {
         Public.inStore = false;
         Public.msgList.clear();
 
-        Public.session++;
         Retrofit.clearBasket();
         Voice.stopRecording();
         Voice.stopGuide();
@@ -97,7 +96,7 @@ public class ChatRoomActivity extends AppCompatActivity {
         lastClickTime = SystemClock.elapsedRealtime();
 
         // Start Recording
-        if (!Public.isRecording && clickTime == TIMES_REQUIRED_START_Recording) {
+        if (Voice.mediaRecorder == null && clickTime == TIMES_REQUIRED_START_Recording) {
             // File Name & Path
             String timeStamp = new SimpleDateFormat("yyyyMMdd_HHmmss").format(new Date());
             outputPath = getExternalFilesDir(null).getAbsolutePath() + "/" + timeStamp + "recorded_audio.mp3";
@@ -107,7 +106,7 @@ public class ChatRoomActivity extends AppCompatActivity {
         }
 
         // Stop Recording
-        if (Public.isRecording && clickTime == TIMES_REQUIRED_STOP_Recording) {
+        else if (Voice.mediaRecorder != null && clickTime == TIMES_REQUIRED_STOP_Recording) {
             Voice.stopRecording();                              // Stop Recording
 
             Retrofit.uploadFileToServer(outFile, outputPath);   // STT: Upload File to Server

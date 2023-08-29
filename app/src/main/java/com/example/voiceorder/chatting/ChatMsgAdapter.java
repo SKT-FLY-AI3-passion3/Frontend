@@ -1,5 +1,7 @@
 package com.example.voiceorder.chatting;
 
+import android.content.Intent;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -31,6 +33,8 @@ public class ChatMsgAdapter extends RecyclerView.Adapter<ChatMsgAdapter.ViewHold
     @Override
     public void onBindViewHolder(final ViewHolder holder, int position) {
         // Get Chat Objects one by one and do the following.
+        Log.d("dfafsdf", mValues.toString());
+        Log.d("dfafsdf", Integer.toString(mValues.size()));
         ChatMsgVO vo = mValues.get(position);
 
         if (!vo.getContent().equals("")) {                  // Chat Exists => Print Content

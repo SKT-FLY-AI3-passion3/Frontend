@@ -72,6 +72,8 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
                 // Execute ChatRoomActivity
                 Intent intent = new Intent(this, ChatRoomActivity.class);
                 startActivity(intent);
+
+                Public.createRandNum();
             } catch (JSONException e) {
                 throw new RuntimeException(e);
             }
@@ -93,8 +95,6 @@ public class MainActivity extends AppCompatActivity implements BeaconConsumer {
     protected void onDestroy() {
         super.onDestroy();
         beaconManager.unbind(this);
-        Public.inStore = false;
-        Public.msgList.clear();
 
         vibrator.cancel();
         vibrator = null;
